@@ -1,3 +1,6 @@
 /target
 /resources/private
 .nrepl-port
+h2-*.jar
+db.h2.mv
+db.h2.trace

@@ -1,0 +1,6 @@
+2020-11-06 12:21:42 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "EARNINGS_PORTLAND" not found; SQL statement:
+SELECT * FROM earnings_portland [42102-200]
+2020-11-06 12:23:24 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "earnings_portland" already exists; SQL statement:
+CREATE TABLE "earnings_portland" ("month" DATE, "manufacturing" double, "construction" double, "leisure-hospitality" double, "financial" double, "trade-transport-utility" double, "services-education-health" double, "information" double, "services-professional-business" double, "government" double, "other" double) [42101-200]

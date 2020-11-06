@@ -7,7 +7,9 @@
                  [metasoarous/oz "1.6.0-alpha31"]
                  [clj-http "3.10.3"]
                  [org.clojure/data.json "1.0.0"]
-                 ;;JDBC dependencies
+                 ;;Database Stuff
                  [com.h2database/h2 "1.4.200"]
                  [seancorfield/next.jdbc "1.1.610"]
-                 [org.xerial/sqlite-jdbc "3.7.2"]])
+                 [org.xerial/sqlite-jdbc "3.7.2"]
+                 [sqlingvo "0.9.31"]
+                 ])
