@@ -22,7 +22,9 @@
   (for [mx (i/matrix table-pdx-earn)]
     (zipmap (map keyword (i/col-names table-pdx-earn)) mx)))
 
-;; Create earnings_portland table
+
+
+;; REPL -- Create earnings_portland table
 (def create-table-earnings-portland
   (sql/sql
    (sql/create-table h2 :earnings_portland
@@ -47,6 +49,9 @@
 
 (jdbc/execute! db insert-table-earnings-portland)
 
+
+
+;; REPL -- Read earnings_portland table
 (def read-table-earnings-portland
   (sql/sql
    (sql/select h2 [:*]
