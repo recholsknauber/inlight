@@ -1,3 +1,0 @@
-SELECT *
-FROM EARNINGS_PORTLAND
-ORDER BY "month" desc;
