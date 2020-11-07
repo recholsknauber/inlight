@@ -27,7 +27,7 @@
 ;; REPL -- Create earnings_portland table
 (def create-table-earnings-portland
   (sql/sql
-   (sql/create-table h2 :earnings_portland
+   (sql/create-table h2 :EARNINGS_PORTLAND
                      (sql/column :month :date)
                      (sql/column :manufacturing :double)
                      (sql/column :construction :double)
@@ -44,10 +44,41 @@
 
 (def insert-table-earnings-portland
 (sql/sql
-  (sql/insert h2 :earnings_portland []
+  (sql/insert h2 :EARNINGS_PORTLAND []
   (sql/values table-pdx-earn-maps))))
 
 (jdbc/execute! db insert-table-earnings-portland)
+
+;; Import table of Portland Employment
+(def table-pdx-emp (ixl/read-xls "../inlight/resources/public/portland-employment.xlsx"))
+
+(def table-pdx-emp-maps
+  (for [mx (i/matrix table-pdx-emp)]
+    (zipmap (map keyword (i/col-names table-pdx-emp)) mx)))
+
+
+
+;; REPL -- Create employment_portland table
+(def create-table-employment-portland
+  (sql/sql
+   (sql/create-table h2 :EMPLOYMENT_PORTLAND
+                     (sql/column :month :date)
+                     (sql/column :labor-force :double)
+                     (sql/column :employment :double)
+                     (sql/column :unemployment :double)
+                     (sql/column :unemployment-rate :double)
+                     )))
+
+
+(jdbc/execute! db create-table-employment-portland)
+
+(def insert-table-employment-portland
+(sql/sql
+  (sql/insert h2 :EMPLOYMENT_PORTLAND []
+  (sql/values table-pdx-emp-maps))))
+
+(jdbc/execute! db insert-table-employment-portland)
+
 
 
 
@@ -55,7 +86,7 @@
 (def read-table-earnings-portland
   (sql/sql
    (sql/select h2 [:*]
-     (sql/from :earnings_portland)
+     (sql/from :EARNINGS_PORTLAND)
      (sql/order-by (sql/desc :month)))))
 
 (take 2 (jdbc/execute! db read-table-earnings-portland
