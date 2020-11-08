@@ -1,0 +1,162 @@
+* Namespace and DB Connection
+#+begin_src clojure :session PDX_ECON
+  (ns inlight.core
+    (:require [incanter.core :as i]
+              [incanter.excel :as ixl]
+              [next.jdbc :as jdbc]
+              [next.jdbc.result-set :as jdbcrs]
+              [sqlingvo.core :as sql]
+              [clojure.string :as str]
+              [clojure.pprint :as pp])
+    (:import java.sql.DriverManager))
+
+  ;; Create H2 DB.
+  (def db-cred {:dbtype "h2"
+                :classname "org.h2.Driver"
+                :dbname "db.h2"})
+
+  (def db (jdbc/get-datasource db-cred))
+
+  (def h2 (sql/db :postgresql))
+#+end_src
+
+#+RESULTS:
+: nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/h2
+* Table creation--PDX Employment Wage & Salary Data
+#+begin_src clojure :session PDX_ECON
+  ;; REPL -- Import table of Portland Employment Wage & Salary Data
+  (def table-pdx-earn (ixl/read-xls "../inlight/resources/public/portland-emphrsearn-all-transposed.xlsx"))
+
+  ;; Convert column names to uppercase and keywords, zipping with data values.
+  (def table-pdx-earn-maps
+    (for [mx (i/matrix table-pdx-earn)]
+      (zipmap (map keyword
+                   (map str/upper-case
+                        (map #(str/replace % "-" "_") (i/col-names table-pdx-earn))))
+              mx)))
+  ;; (take 2 table-pdx-earn-maps)
+
+  ;; Create earnings_portland table
+  (jdbc/execute! db ["DROP TABLE PDX_ECON.EARNINGS_PORTLAND if exists;"])
+  (def create-table-earnings-portland
+    (sql/sql
+     (sql/create-table h2 :PDX_ECON.EARNINGS_PORTLAND
+                       (sql/column :MONTH :date)
+                       (sql/column :MANUFACTURING :double)
+                       (sql/column :CONSTRUCTION :double)
+                       (sql/column :LEISURE_HOSPITALITY :double)
+                       (sql/column :FINANCIAL :double)
+                       (sql/column :TRADE_TRANSPORT_UTILITY :double)
+                       (sql/column :SERVICES_EDUCATION_HEALTH :double)
+                       (sql/column :INFORMATION :double)
+                       (sql/column :SERVICES_PROFESSIONAL_BUSINESS :double)
+                       (sql/column :GOVERNMENT :double)
+                       (sql/column :OTHER :double))))
+
+  (jdbc/execute! db create-table-earnings-portland)
+
+  (def insert-table-earnings-portland
+  (sql/sql
+    (sql/insert h2 :PDX_ECON.EARNINGS_PORTLAND []
+    (sql/values table-pdx-earn-maps))))
+
+  (jdbc/execute! db insert-table-earnings-portland)
+
+#+end_src
+
+#+RESULTS:
+: #'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
+* Table creation--PDX Unemployment
+#+begin_src clojure :session PDX_ECON
+;; REPL -- Import table of Portland Employment
+(def table-pdx-emp (ixl/read-xls "../inlight/resources/public/portland-employment.xlsx"))
+
+(def table-pdx-emp-maps
+  (for [mx (i/matrix table-pdx-emp)]
+    (zipmap (map keyword
+                 (map str/upper-case
+                      (map #(str/replace % "-" "_") (i/col-names table-pdx-emp))))
+            mx)))
+
+;; Create employment_portland table
+;; (jdbc/execute! db ["DROP TABLE PDX_ECON.EMPLOYMENT_PORTLAND;"])
+(def create-table-employment-portland
+  (sql/sql
+   (sql/create-table h2 :PDX_ECON.EMPLOYMENT_PORTLAND
+                     (sql/column :MONTH :date)
+                     (sql/column :LABOR_FORCE :double)
+                     (sql/column :EMPLOYMENT :double)
+                     (sql/column :UNEMPLOYMENT :double)
+                     (sql/column :UNEMPLOYMENT_RATE :double)
+                     )))
+
+
+(jdbc/execute! db create-table-employment-portland)
+
+(def insert-table-employment-portland
+(sql/sql
+  (sql/insert h2 :PDX_ECON.EMPLOYMENT_PORTLAND []
+  (sql/values table-pdx-emp-maps))))
+
+(jdbc/execute! db insert-table-employment-portland)
+
+#+end_src
+
+#+RESULTS:
+: #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
+* SQL
+#+begin_src sql :session PDX_ECON
+  DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
+  CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN as (
+  SELECT ea.MONTH as PDX_MONTH, emp.UNEMPLOYMENT_RATE, ea.MANUFACTURING, ea.CONSTRUCTION, ea.LEISURE_HOSPITALITY, ea.FINANCIAL, ea.TRADE_TRANSPORT_UTILITY, ea.SERVICES_EDUCATION_HEALTH, ea.INFORMATION, ea.SERVICES_PROFESSIONAL_BUSINESS, ea.GOVERNMENT, ea.OTHER
+  FROM PDX_ECON.EARNINGS_PORTLAND as ea
+  LEFT JOIN PDX_ECON.EMPLOYMENT_PORTLAND as emp
+  ON ea.MONTH = emp.MONTH
+  ORDER BY ea.MONTH desc
+  );
+
+  -- SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN;
+
+  -- DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY IF EXISTS;
+  -- CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY as (
+  -- SELECT PDX_MONTH, UNEMPLOYMENT_RATE, (UNEMPLOYMENT_RATE - LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH)) as YOY_DIFF
+  -- FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
+  -- );
+#+end_src
+* Reading
+#+begin_src clojure :session PDX_ECON :results output
+  ;; Run SQL Code from previous block
+  (jdbc/execute! db ["  DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
+  CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN as (
+  SELECT ea.MONTH as PDX_MONTH, emp.UNEMPLOYMENT_RATE, ea.MANUFACTURING, ea.CONSTRUCTION, ea.LEISURE_HOSPITALITY, ea.FINANCIAL, ea.TRADE_TRANSPORT_UTILITY, ea.SERVICES_EDUCATION_HEALTH, ea.INFORMATION, ea.SERVICES_PROFESSIONAL_BUSINESS, ea.GOVERNMENT, ea.OTHER
+  FROM PDX_ECON.EARNINGS_PORTLAND as ea
+  LEFT JOIN PDX_ECON.EMPLOYMENT_PORTLAND as emp
+  ON ea.MONTH = emp.MONTH
+  ORDER BY ea.MONTH desc
+  );
+"])
+
+  (pp/print-table (take 2 (jdbc/execute! db ["SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN;"]
+                 {:return-keys true
+                  :builder-fn jdbcrs/as-unqualified-lower-maps})))
+
+  ;; REPL -- Read earnings_portland table
+  ;; (def read-table-earnings-portland
+  ;;   (sql/sql
+  ;;    (sql/select h2 [:*]
+  ;;      (sql/from :PDX_ECON.EARNINGS_PORTLAND)
+  ;;      (sql/order-by (sql/desc :MONTH)))))
+
+  ;; (pp/print-table (take 2 (jdbc/execute! db read-table-earnings-portland
+  ;;                {:return-keys true
+  ;;                 :builder-fn jdbcrs/as-unqualified-lower-maps})))
+
+
+#+end_src
+
+#+RESULTS:
+: 
+: | :leisure_hospitality | :manufacturing | :unemployment_rate | :construction | :other | :services_education_health | :financial | :services_professional_business | :trade_transport_utility | :information | :pdx_month | :government |
+: |----------------------+----------------+--------------------+---------------+--------+----------------------------+------------+---------------------------------+--------------------------+--------------+------------+-------------|
+: |                 89.8 |          119.9 |                7.7 |          75.5 |   38.8 |                      174.3 |       70.6 |                           181.3 |                    212.1 |         24.6 | 2020-09-01 |       141.7 |
+: |                 90.9 |          120.0 |                9.1 |          79.2 |   39.6 |                      169.3 |       70.0 |                           182.5 |                    210.8 |         24.4 | 2020-08-01 |       138.9 |
