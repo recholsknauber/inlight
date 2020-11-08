@@ -114,19 +114,12 @@
   ON ea.MONTH = emp.MONTH
   ORDER BY ea.MONTH desc
   );
-
-  -- SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN;
-
-  -- DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY IF EXISTS;
-  -- CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY as (
-  -- SELECT PDX_MONTH, UNEMPLOYMENT_RATE, (UNEMPLOYMENT_RATE - LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH)) as YOY_DIFF
-  -- FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
-  -- );
 #+end_src
-* Reading
+
+* Create Earnings Employment Join table with SQl
 #+begin_src clojure :session PDX_ECON :results output
   ;; Run SQL Code from previous block
-  (jdbc/execute! db ["  DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
+  (jdbc/execute! db ["DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
   CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN as (
   SELECT ea.MONTH as PDX_MONTH, emp.UNEMPLOYMENT_RATE, ea.MANUFACTURING, ea.CONSTRUCTION, ea.LEISURE_HOSPITALITY, ea.FINANCIAL, ea.TRADE_TRANSPORT_UTILITY, ea.SERVICES_EDUCATION_HEALTH, ea.INFORMATION, ea.SERVICES_PROFESSIONAL_BUSINESS, ea.GOVERNMENT, ea.OTHER
   FROM PDX_ECON.EARNINGS_PORTLAND as ea
@@ -139,19 +132,6 @@
   (pp/print-table (take 2 (jdbc/execute! db ["SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN;"]
                  {:return-keys true
                   :builder-fn jdbcrs/as-unqualified-lower-maps})))
-
-  ;; REPL -- Read earnings_portland table
-  ;; (def read-table-earnings-portland
-  ;;   (sql/sql
-  ;;    (sql/select h2 [:*]
-  ;;      (sql/from :PDX_ECON.EARNINGS_PORTLAND)
-  ;;      (sql/order-by (sql/desc :MONTH)))))
-
-  ;; (pp/print-table (take 2 (jdbc/execute! db read-table-earnings-portland
-  ;;                {:return-keys true
-  ;;                 :builder-fn jdbcrs/as-unqualified-lower-maps})))
-
-
 #+end_src
 
 #+RESULTS:
@@ -160,3 +140,61 @@
 : |----------------------+----------------+--------------------+---------------+--------+----------------------------+------------+---------------------------------+--------------------------+--------------+------------+-------------|
 : |                 89.8 |          119.9 |                7.7 |          75.5 |   38.8 |                      174.3 |       70.6 |                           181.3 |                    212.1 |         24.6 | 2020-09-01 |       141.7 |
 : |                 90.9 |          120.0 |                9.1 |          79.2 |   39.6 |                      169.3 |       70.0 |                           182.5 |                    210.8 |         24.4 | 2020-08-01 |       138.9 |
+
+* SQL--Create YOY table
+#+begin_src sql
+DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG IF EXISTS;
+CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG as (
+SELECT PDX_MONTH, UNEMPLOYMENT_RATE, LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH) as UNEMPLOYMENT_RATE_12MO_LAG
+FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
+);
+
+DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE IF EXISTS;
+CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE as (
+SELECT PDX_MONTH, UNEMPLOYMENT_RATE,
+(((UNEMPLOYMENT_RATE - UNEMPLOYMENT_RATE_12MO_LAG)/UNEMPLOYMENT_RATE_12MO_LAG)*100) as UNEMPLOYMENT_RATE_YOY_CHANGE
+FROM PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG
+);
+
+#+end_src
+
+* Create YOY table
+#+begin_src clojure :results output
+    ;; Run SQL Code from previous block
+    (jdbc/execute! db ["
+DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG IF EXISTS;
+CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG as (
+SELECT PDX_MONTH, UNEMPLOYMENT_RATE, LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH) as UNEMPLOYMENT_RATE_12MO_LAG
+FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
+);
+
+DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE IF EXISTS;
+CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE as (
+SELECT PDX_MONTH, UNEMPLOYMENT_RATE,
+(((UNEMPLOYMENT_RATE - UNEMPLOYMENT_RATE_12MO_LAG)/UNEMPLOYMENT_RATE_12MO_LAG)*100) as UNEMPLOYMENT_RATE_YOY_CHANGE
+FROM PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG
+);
+  "])
+
+    (pp/print-table (take 15 (jdbc/execute! db ["SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE;"]
+                   {:return-keys true
+                    :builder-fn jdbcrs/as-unqualified-lower-maps})))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+class org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionExecution error (JdbcSQLNonTransientException) at org.h2.message.DbException/getJdbcSQLException (DbException.java:505).
+Unknown data type: "ROW"; SQL statement:
+CREATE MEMORY TABLE "PDX_ECON"."EARNINGS_EMPLOYMENT_YOY_CHANGE"(
+    "PDX_MONTH" DATE,
+    "UNEMPLOYMENT_RATE" DOUBLE,
+    "UNEMPLOYMENT_RATE_YOY_CHANGE" ROW
+) [50004-200]
+Execution error (JdbcSQLNonTransientException) at org.h2.message.DbException/getJdbcSQLException (DbException.java:505).
+Unknown data type: "ROW"; SQL statement:
+CREATE MEMORY TABLE "PDX_ECON"."EARNINGS_EMPLOYMENT_YOY_CHANGE"(
+    "PDX_MONTH" DATE,
+    "UNEMPLOYMENT_RATE" DOUBLE,
+    "UNEMPLOYMENT_RATE_YOY_CHANGE" ROW
+) [50004-200]
+#+end_example
