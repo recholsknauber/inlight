@@ -11,17 +11,20 @@
     (:import java.sql.DriverManager))
 
   ;; Create H2 DB.
-  (def db-cred {:dbtype "h2"
-                :classname "org.h2.Driver"
-                :dbname "db.h2"})
+  (def db-cred {:dbtype "postgresql"
+                :dbname "ECON"
+                :host "127.0.0.1"
+                :post "5432"
+                :user "postgres"
+                :password "ela8teD53"})
 
   (def db (jdbc/get-datasource db-cred))
 
-  (def h2 (sql/db :postgresql))
+  (def dbsql (sql/db :postgresql))
 #+end_src
 
 #+RESULTS:
-: nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/h2
+: nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/dbsql
 * Table creation--PDX Employment Wage & Salary Data
 #+begin_src clojure :session PDX_ECON
   ;; REPL -- Import table of Portland Employment Wage & Salary Data
@@ -36,29 +39,34 @@
               mx)))
   ;; (take 2 table-pdx-earn-maps)
 
+  ;; Convert Jave Date to String for table upload.
+  (defn date-to-string [date] (.format (java.text.SimpleDateFormat. "MM/dd/YYY") date))
+  (def table-pdx-earn-maps-strdate
+    (map #(update-in % [:MONTH] date-to-string) table-pdx-earn-maps))
+
   ;; Create earnings_portland table
-  (jdbc/execute! db ["DROP TABLE PDX_ECON.EARNINGS_PORTLAND if exists;"])
+  (jdbc/execute! db ["DROP TABLE IF EXISTS pdx_econ.earnings_portland;"])
   (def create-table-earnings-portland
     (sql/sql
-     (sql/create-table h2 :PDX_ECON.EARNINGS_PORTLAND
-                       (sql/column :MONTH :date)
-                       (sql/column :MANUFACTURING :double)
-                       (sql/column :CONSTRUCTION :double)
-                       (sql/column :LEISURE_HOSPITALITY :double)
-                       (sql/column :FINANCIAL :double)
-                       (sql/column :TRADE_TRANSPORT_UTILITY :double)
-                       (sql/column :SERVICES_EDUCATION_HEALTH :double)
-                       (sql/column :INFORMATION :double)
-                       (sql/column :SERVICES_PROFESSIONAL_BUSINESS :double)
-                       (sql/column :GOVERNMENT :double)
-                       (sql/column :OTHER :double))))
+     (sql/create-table dbsql :pdx_econ.earnings_portland
+                       (sql/column :MONTH :varchar :size 25)
+                       (sql/column :MANUFACTURING :float :size 25)
+                       (sql/column :CONSTRUCTION :float :size 25)
+                       (sql/column :LEISURE_HOSPITALITY :float :size 25)
+                       (sql/column :FINANCIAL :float :size 25)
+                       (sql/column :TRADE_TRANSPORT_UTILITY :float :size 25)
+                       (sql/column :SERVICES_EDUCATION_HEALTH :float :size 25)
+                       (sql/column :INFORMATION :float :size 25)
+                       (sql/column :SERVICES_PROFESSIONAL_BUSINESS :float :size 25)
+                       (sql/column :GOVERNMENT :float :size 25)
+                       (sql/column :OTHER :float :size 25))))
 
   (jdbc/execute! db create-table-earnings-portland)
 
   (def insert-table-earnings-portland
   (sql/sql
-    (sql/insert h2 :PDX_ECON.EARNINGS_PORTLAND []
-    (sql/values table-pdx-earn-maps))))
+    (sql/insert dbsql :pdx_econ.earnings_portland []
+    (sql/values table-pdx-earn-maps-strdate))))
 
   (jdbc/execute! db insert-table-earnings-portland)
 
@@ -68,42 +76,46 @@
 : #'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
 * Table creation--PDX Unemployment
 #+begin_src clojure :session PDX_ECON
-;; REPL -- Import table of Portland Employment
-(def table-pdx-emp (ixl/read-xls "../inlight/resources/public/portland-employment.xlsx"))
+  ;; REPL -- Import table of Portland Employment
+  (def table-pdx-emp (ixl/read-xls "../inlight/resources/public/portland-employment.xlsx"))
 
-(def table-pdx-emp-maps
-  (for [mx (i/matrix table-pdx-emp)]
-    (zipmap (map keyword
-                 (map str/upper-case
-                      (map #(str/replace % "-" "_") (i/col-names table-pdx-emp))))
-            mx)))
+  (def table-pdx-emp-maps
+    (for [mx (i/matrix table-pdx-emp)]
+      (zipmap (map keyword
+                   (map str/upper-case
+                        (map #(str/replace % "-" "_") (i/col-names table-pdx-emp))))
+              mx)))
 
-;; Create employment_portland table
-;; (jdbc/execute! db ["DROP TABLE PDX_ECON.EMPLOYMENT_PORTLAND;"])
-(def create-table-employment-portland
+  ;; Change MONTH to string for table upload.
+  (def table-pdx-emp-maps-strdate
+    (map #(update-in % [:MONTH] date-to-string) table-pdx-emp-maps))
+
+
+  ;; Create employment_portland table
+  (jdbc/execute! db ["DROP TABLE IF EXISTS pdx_econ.employment_portland;"])
+  (def create-table-employment-portland
+    (sql/sql
+     (sql/create-table dbsql :pdx_econ.employment_portland
+                       (sql/column :MONTH :varchar :size 25)
+                       (sql/column :LABOR_FORCE :float :size 25)
+                       (sql/column :EMPLOYMENT :float :size 25)
+                       (sql/column :UNEMPLOYMENT :float :size 25)
+                       (sql/column :UNEMPLOYMENT_RATE :float :size 25)
+                       )))
+
+
+  (jdbc/execute! db create-table-employment-portland)
+
+  (def insert-table-employment-portland
   (sql/sql
-   (sql/create-table h2 :PDX_ECON.EMPLOYMENT_PORTLAND
-                     (sql/column :MONTH :date)
-                     (sql/column :LABOR_FORCE :double)
-                     (sql/column :EMPLOYMENT :double)
-                     (sql/column :UNEMPLOYMENT :double)
-                     (sql/column :UNEMPLOYMENT_RATE :double)
-                     )))
+    (sql/insert dbsql :pdx_econ.employment_portland []
+    (sql/values table-pdx-emp-maps-strdate))))
 
-
-(jdbc/execute! db create-table-employment-portland)
-
-(def insert-table-employment-portland
-(sql/sql
-  (sql/insert h2 :PDX_ECON.EMPLOYMENT_PORTLAND []
-  (sql/values table-pdx-emp-maps))))
-
-(jdbc/execute! db insert-table-employment-portland)
-
+  (jdbc/execute! db insert-table-employment-portland)
 #+end_src
 
 #+RESULTS:
-: #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
+: #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/table-pdx-emp-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
 * SQL
 #+begin_src sql :session PDX_ECON
   DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
