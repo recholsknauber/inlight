@@ -27,7 +27,7 @@
 : nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/dbsql
 * Table creation--PDX Employment Wage & Salary Data
 #+begin_src clojure :session PDX_ECON
-1  ;; REPL -- Import table of Portland Employment Wage & Salary Data
+  ;; REPL -- Import table of Portland Employment Wage & Salary Data
   (def table-pdx-earn (ixl/read-xls "../inlight/resources/public/portland-emphrsearn-all-transposed.xlsx"))
 
   ;; Convert column names to uppercase and keywords, zipping with data values.
