@@ -227,7 +227,7 @@
 #+end_src
 
 #+RESULTS:
-: #function[taoensso.sente/-start-chsk-router!/stop!--44320]
+: #function[taoensso.sente/-start-chsk-router!/stop!--42697]
 
 ** Build plots
 #+begin_src clojure :session PDX_ECON
