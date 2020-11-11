@@ -226,16 +226,19 @@
   (oz/start-server!)
 #+end_src
 
+#+RESULTS:
+: #function[taoensso.sente/-start-chsk-router!/stop!--44320]
+
 ** Build plots
 #+begin_src clojure :session PDX_ECON
-  (def table-pdx-earn-emp-yoy (jdbc/execute! db ["SELECT * FROM pdx_econ.earnings_employment_yoy_change"]
+  (def table-pdx-earn-emp-yoy (jdbc/execute! db ["SELECT * FROM pdx_econ.earnings_employment_yoy_change WHERE pdx_month > '12/31/2018'::date"]
                                              {:builder-fn jdbcrs/as-unqualified-lower-maps}))
 
   (def unemp-line-plot
     {:width 800
      :height 500
      :data {:values table-pdx-earn-emp-yoy}
-     :encoding {:x {:field "pdx_month" :type "temporal"}
+     :encoding {:x {:field "pdx_month" :timeUnit "yearmonth"}
                 :y {:field "unemployment_rate" :type "quantitative"}}
      :mark "line"})
 
