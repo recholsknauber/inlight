@@ -27,14 +27,14 @@
 : nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/dbsql
 * Table creation--PDX Employment Wage & Salary Data
 #+begin_src clojure :session PDX_ECON
-  ;; REPL -- Import table of Portland Employment Wage & Salary Data
+1  ;; REPL -- Import table of Portland Employment Wage & Salary Data
   (def table-pdx-earn (ixl/read-xls "../inlight/resources/public/portland-emphrsearn-all-transposed.xlsx"))
 
   ;; Convert column names to uppercase and keywords, zipping with data values.
   (def table-pdx-earn-maps
     (for [mx (i/matrix table-pdx-earn)]
       (zipmap (map keyword
-                   (map str/upper-case
+                   (map str/lower-case
                         (map #(str/replace % "-" "_") (i/col-names table-pdx-earn))))
               mx)))
   ;; (take 2 table-pdx-earn-maps)
@@ -42,24 +42,24 @@
   ;; Convert Jave Date to String for table upload.
   (defn date-to-string [date] (.format (java.text.SimpleDateFormat. "MM/dd/YYY") date))
   (def table-pdx-earn-maps-strdate
-    (map #(update-in % [:MONTH] date-to-string) table-pdx-earn-maps))
+    (map #(update-in % [:month] date-to-string) table-pdx-earn-maps))
 
   ;; Create earnings_portland table
   (jdbc/execute! db ["DROP TABLE IF EXISTS pdx_econ.earnings_portland;"])
   (def create-table-earnings-portland
     (sql/sql
      (sql/create-table dbsql :pdx_econ.earnings_portland
-                       (sql/column :MONTH :varchar :size 25)
-                       (sql/column :MANUFACTURING :float :size 25)
-                       (sql/column :CONSTRUCTION :float :size 25)
-                       (sql/column :LEISURE_HOSPITALITY :float :size 25)
-                       (sql/column :FINANCIAL :float :size 25)
-                       (sql/column :TRADE_TRANSPORT_UTILITY :float :size 25)
-                       (sql/column :SERVICES_EDUCATION_HEALTH :float :size 25)
-                       (sql/column :INFORMATION :float :size 25)
-                       (sql/column :SERVICES_PROFESSIONAL_BUSINESS :float :size 25)
-                       (sql/column :GOVERNMENT :float :size 25)
-                       (sql/column :OTHER :float :size 25))))
+                       (sql/column :month :varchar :size 25)
+                       (sql/column :manufacturing :float :size 25)
+                       (sql/column :construction :float :size 25)
+                       (sql/column :leisure_hospitality :float :size 25)
+                       (sql/column :financial :float :size 25)
+                       (sql/column :trade_transport_utility :float :size 25)
+                       (sql/column :services_education_health :float :size 25)
+                       (sql/column :information :float :size 25)
+                       (sql/column :services_professional_business :float :size 25)
+                       (sql/column :government :float :size 25)
+                       (sql/column :other :float :size 25))))
 
   (jdbc/execute! db create-table-earnings-portland)
 
@@ -73,7 +73,7 @@
 #+end_src
 
 #+RESULTS:
-: #'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
+: 1#'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps#'inlight.core/date-to-string#'inlight.core/table-pdx-earn-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
 * Table creation--PDX Unemployment
 #+begin_src clojure :session PDX_ECON
   ;; REPL -- Import table of Portland Employment
@@ -82,13 +82,13 @@
   (def table-pdx-emp-maps
     (for [mx (i/matrix table-pdx-emp)]
       (zipmap (map keyword
-                   (map str/upper-case
+                   (map str/lower-case
                         (map #(str/replace % "-" "_") (i/col-names table-pdx-emp))))
               mx)))
 
   ;; Change MONTH to string for table upload.
   (def table-pdx-emp-maps-strdate
-    (map #(update-in % [:MONTH] date-to-string) table-pdx-emp-maps))
+    (map #(update-in % [:month] date-to-string) table-pdx-emp-maps))
 
 
   ;; Create employment_portland table
@@ -96,11 +96,11 @@
   (def create-table-employment-portland
     (sql/sql
      (sql/create-table dbsql :pdx_econ.employment_portland
-                       (sql/column :MONTH :varchar :size 25)
-                       (sql/column :LABOR_FORCE :float :size 25)
-                       (sql/column :EMPLOYMENT :float :size 25)
-                       (sql/column :UNEMPLOYMENT :float :size 25)
-                       (sql/column :UNEMPLOYMENT_RATE :float :size 25)
+                       (sql/column :month :varchar :size 25)
+                       (sql/column :labor_force :float :size 25)
+                       (sql/column :employment :float :size 25)
+                       (sql/column :unemployment :float :size 25)
+                       (sql/column :unemployment_rate :float :size 25)
                        )))
 
 
@@ -118,32 +118,24 @@
 : #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/table-pdx-emp-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
 * SQL
 #+begin_src sql :session PDX_ECON
-  DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
-  CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN as (
-  SELECT ea.MONTH as PDX_MONTH, emp.UNEMPLOYMENT_RATE, ea.MANUFACTURING, ea.CONSTRUCTION, ea.LEISURE_HOSPITALITY, ea.FINANCIAL, ea.TRADE_TRANSPORT_UTILITY, ea.SERVICES_EDUCATION_HEALTH, ea.INFORMATION, ea.SERVICES_PROFESSIONAL_BUSINESS, ea.GOVERNMENT, ea.OTHER
-  FROM PDX_ECON.EARNINGS_PORTLAND as ea
-  LEFT JOIN PDX_ECON.EMPLOYMENT_PORTLAND as emp
-  ON ea.MONTH = emp.MONTH
-  ORDER BY ea.MONTH desc
+  DROP TABLE IF EXISTS earnings_employment_join;
+  CREATE TEMPORARY TABLE earnings_employment_join as (
+  SELECT TO_DATE(ea.month, 'MM/DD/YYYY') as pdx_month, emp.unemployment_rate, ea.manufacturing, ea.construction, ea.leisure_hospitality, ea.financial, ea.trade_transport_utility, ea.services_education_health, ea.information, ea.services_professional_business, ea.government, ea.other
+  FROM pdx_econ.earnings_portland as ea
+  LEFT JOIN pdx_econ.employment_portland as emp
+  ON ea.month = emp.month
+  ORDER BY pdx_month desc
   );
 #+end_src
 
 * Create Earnings Employment Join table with SQl
 #+begin_src clojure :session PDX_ECON :results output
-  ;; Run SQL Code from previous block
-  (jdbc/execute! db ["DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN IF EXISTS;
-  CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_JOIN as (
-  SELECT ea.MONTH as PDX_MONTH, emp.UNEMPLOYMENT_RATE, ea.MANUFACTURING, ea.CONSTRUCTION, ea.LEISURE_HOSPITALITY, ea.FINANCIAL, ea.TRADE_TRANSPORT_UTILITY, ea.SERVICES_EDUCATION_HEALTH, ea.INFORMATION, ea.SERVICES_PROFESSIONAL_BUSINESS, ea.GOVERNMENT, ea.OTHER
-  FROM PDX_ECON.EARNINGS_PORTLAND as ea
-  LEFT JOIN PDX_ECON.EMPLOYMENT_PORTLAND as emp
-  ON ea.MONTH = emp.MONTH
-  ORDER BY ea.MONTH desc
-  );
-"])
+    ;; Run SQL Code from previous block
+    (jdbc/execute! db [])
 
-  (pp/print-table (take 2 (jdbc/execute! db ["SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN;"]
-                 {:return-keys true
-                  :builder-fn jdbcrs/as-unqualified-lower-maps})))
+    (pp/print-table (take 2 (jdbc/execute! db ["SELECT * FROM earnings_employment_join;"]
+                   {:return-keys true
+                    :builder-fn jdbcrs/as-unqualified-lower-maps})))
 #+end_src
 
 #+RESULTS:
@@ -155,18 +147,18 @@
 
 * SQL--Create YOY table
 #+begin_src sql
-DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG IF EXISTS;
-CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG as (
-SELECT PDX_MONTH, UNEMPLOYMENT_RATE, LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH) as UNEMPLOYMENT_RATE_12MO_LAG
-FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
-);
+  DROP TABLE IF EXISTS earnings_employment_12mo_lag;
+  CREATE TEMPORARY TABLE earnings_employment_12mo_lag as (
+  SELECT pdx_month, unemployment_rate, LAG(unemployment_rate, 12) OVER (ORDER BY pdx_month) as unemployment_rate_12mo_lag
+  FROM earnings_employment_join
+  );
 
-DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE IF EXISTS;
-CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE as (
-SELECT PDX_MONTH, UNEMPLOYMENT_RATE,
-(((UNEMPLOYMENT_RATE - UNEMPLOYMENT_RATE_12MO_LAG)/UNEMPLOYMENT_RATE_12MO_LAG)*100) as UNEMPLOYMENT_RATE_YOY_CHANGE
-FROM PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG
-);
+  DROP TABLE IF EXISTS earnings_employment_yoy_change;
+  CREATE TEMPORARY TABLE earnings_employment_yoy_change as (
+  SELECT pdx_month, unemployment_rate,
+  (((unemployment_rate - unemployment_rate_12mo_lag)/unemployment_rate_12mo_lag)*100) as unemployment_rate_yoy_change
+  FROM earnings_employment_12mo_lag
+  );
 
 #+end_src
 
