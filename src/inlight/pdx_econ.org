@@ -73,7 +73,7 @@
 #+end_src
 
 #+RESULTS:
-: 1#'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps#'inlight.core/date-to-string#'inlight.core/table-pdx-earn-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
+: #'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps#'inlight.core/date-to-string#'inlight.core/table-pdx-earn-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
 * Table creation--PDX Unemployment
 #+begin_src clojure :session PDX_ECON
   ;; REPL -- Import table of Portland Employment
@@ -117,88 +117,84 @@
 #+RESULTS:
 : #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/table-pdx-emp-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
 * SQL
-#+begin_src sql :session PDX_ECON
-  DROP TABLE IF EXISTS earnings_employment_join;
-  CREATE TEMPORARY TABLE earnings_employment_join as (
+#+begin_src sql :engine "postgresql" :database ECON :dbuser postgres :dbpassword postgres :session pdx_econ
+  DROP TABLE IF EXISTS pdx_econ.earnings_employment_join;
+  CREATE UNLOGGED TABLE pdx_econ.earnings_employment_join as (
   SELECT TO_DATE(ea.month, 'MM/DD/YYYY') as pdx_month, emp.unemployment_rate, ea.manufacturing, ea.construction, ea.leisure_hospitality, ea.financial, ea.trade_transport_utility, ea.services_education_health, ea.information, ea.services_professional_business, ea.government, ea.other
   FROM pdx_econ.earnings_portland as ea
   LEFT JOIN pdx_econ.employment_portland as emp
   ON ea.month = emp.month
   ORDER BY pdx_month desc
   );
-#+end_src
 
-* Create Earnings Employment Join table with SQl
-#+begin_src clojure :session PDX_ECON :results output
-    ;; Run SQL Code from previous block
-    (jdbc/execute! db [])
-
-    (pp/print-table (take 2 (jdbc/execute! db ["SELECT * FROM earnings_employment_join;"]
-                   {:return-keys true
-                    :builder-fn jdbcrs/as-unqualified-lower-maps})))
+  SELECT * FROM pdx_econ.earnings_employment_join limit 5;
 #+end_src
 
 #+RESULTS:
-: 
-: | :leisure_hospitality | :manufacturing | :unemployment_rate | :construction | :other | :services_education_health | :financial | :services_professional_business | :trade_transport_utility | :information | :pdx_month | :government |
-: |----------------------+----------------+--------------------+---------------+--------+----------------------------+------------+---------------------------------+--------------------------+--------------+------------+-------------|
-: |                 89.8 |          119.9 |                7.7 |          75.5 |   38.8 |                      174.3 |       70.6 |                           181.3 |                    212.1 |         24.6 | 2020-09-01 |       141.7 |
-: |                 90.9 |          120.0 |                9.1 |          79.2 |   39.6 |                      169.3 |       70.0 |                           182.5 |                    210.8 |         24.4 | 2020-08-01 |       138.9 |
+| DROP TABLE |                   |               |              |                     |           |                         |                           |             |                                |            |       |
+|------------+-------------------+---------------+--------------+---------------------+-----------+-------------------------+---------------------------+-------------+--------------------------------+------------+-------|
+| SELECT 129 |                   |               |              |                     |           |                         |                           |             |                                |            |       |
+|  pdx_month | unemployment_rate | manufacturing | construction | leisure_hospitality | financial | trade_transport_utility | services_education_health | information | services_professional_business | government | other |
+| 2020-09-01 |               7.7 |         119.9 |         75.5 |                89.8 |      70.6 |                   212.1 |                     174.3 |        24.6 |                          181.3 |      141.7 |  38.8 |
+| 2020-08-01 |               9.1 |           120 |         79.2 |                90.9 |        70 |                   210.8 |                     169.3 |        24.4 |                          182.5 |      138.9 |  39.6 |
+| 2020-07-01 |              11.2 |         120.8 |         76.7 |                89.4 |      69.5 |                   210.2 |                     167.8 |        24.3 |                          183.8 |      137.1 |  39.4 |
+| 2020-06-01 |              11.8 |         121.2 |         76.7 |                84.8 |      69.2 |                   206.8 |                     167.8 |        24.6 |                          179.2 |      145.2 |  38.6 |
+| 2020-05-01 |                14 |         118.3 |         74.7 |                62.4 |      68.1 |                   203.7 |                     164.5 |        23.9 |                            177 |      146.4 |    37 |
 
 * SQL--Create YOY table
-#+begin_src sql
-  DROP TABLE IF EXISTS earnings_employment_12mo_lag;
-  CREATE TEMPORARY TABLE earnings_employment_12mo_lag as (
+#+begin_src sql :engine "postgresql" :database ECON :dbuser postgres :dbpassword postgres :session pdx_econ
+  DROP TABLE IF EXISTS pdx_econ.earnings_employment_12mo_lag;
+  CREATE UNLOGGED TABLE pdx_econ.earnings_employment_12mo_lag as (
   SELECT pdx_month, unemployment_rate, LAG(unemployment_rate, 12) OVER (ORDER BY pdx_month) as unemployment_rate_12mo_lag
-  FROM earnings_employment_join
+  FROM pdx_econ.earnings_employment_join
+  ORDER BY pdx_month desc
   );
 
-  DROP TABLE IF EXISTS earnings_employment_yoy_change;
-  CREATE TEMPORARY TABLE earnings_employment_yoy_change as (
+  SELECT * FROM pdx_econ.earnings_employment_12mo_lag LIMIT 13;
+
+  DROP TABLE IF EXISTS pdx_econ.earnings_employment_yoy_change;
+  CREATE TABLE pdx_econ.earnings_employment_yoy_change as (
   SELECT pdx_month, unemployment_rate,
-  (((unemployment_rate - unemployment_rate_12mo_lag)/unemployment_rate_12mo_lag)*100) as unemployment_rate_yoy_change
-  FROM earnings_employment_12mo_lag
+  (round(((unemployment_rate - unemployment_rate_12mo_lag)/unemployment_rate_12mo_lag)::numeric, 4) *100)::float as unemployment_rate_yoy_pct_change
+  FROM pdx_econ.earnings_employment_12mo_lag
+  ORDER BY pdx_month desc
   );
 
-#+end_src
-
-* Create YOY table
-#+begin_src clojure :results output
-    ;; Run SQL Code from previous block
-    (jdbc/execute! db ["
-DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG IF EXISTS;
-CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG as (
-SELECT PDX_MONTH, UNEMPLOYMENT_RATE, LAG(UNEMPLOYMENT_RATE, 12) OVER (ORDER BY PDX_MONTH) as UNEMPLOYMENT_RATE_12MO_LAG
-FROM PDX_ECON.EARNINGS_EMPLOYMENT_JOIN
-);
-
-DROP TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE IF EXISTS;
-CREATE MEMORY TABLE PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE as (
-SELECT PDX_MONTH, UNEMPLOYMENT_RATE,
-(((UNEMPLOYMENT_RATE - UNEMPLOYMENT_RATE_12MO_LAG)/UNEMPLOYMENT_RATE_12MO_LAG)*100) as UNEMPLOYMENT_RATE_YOY_CHANGE
-FROM PDX_ECON.EARNINGS_EMPLOYMENT_12MO_LAG
-);
-  "])
-
-    (pp/print-table (take 15 (jdbc/execute! db ["SELECT * FROM PDX_ECON.EARNINGS_EMPLOYMENT_YOY_CHANGE;"]
-                   {:return-keys true
-                    :builder-fn jdbcrs/as-unqualified-lower-maps})))
+  SELECT * FROM pdx_econ.earnings_employment_yoy_change LIMIT 13;
 #+end_src
 
 #+RESULTS:
-#+begin_example
-class org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionclass org.h2.jdbc.JdbcSQLNonTransientExceptionExecution error (JdbcSQLNonTransientException) at org.h2.message.DbException/getJdbcSQLException (DbException.java:505).
-Unknown data type: "ROW"; SQL statement:
-CREATE MEMORY TABLE "PDX_ECON"."EARNINGS_EMPLOYMENT_YOY_CHANGE"(
-    "PDX_MONTH" DATE,
-    "UNEMPLOYMENT_RATE" DOUBLE,
-    "UNEMPLOYMENT_RATE_YOY_CHANGE" ROW
-) [50004-200]
-Execution error (JdbcSQLNonTransientException) at org.h2.message.DbException/getJdbcSQLException (DbException.java:505).
-Unknown data type: "ROW"; SQL statement:
-CREATE MEMORY TABLE "PDX_ECON"."EARNINGS_EMPLOYMENT_YOY_CHANGE"(
-    "PDX_MONTH" DATE,
-    "UNEMPLOYMENT_RATE" DOUBLE,
-    "UNEMPLOYMENT_RATE_YOY_CHANGE" ROW
-) [50004-200]
-#+end_example
+| DROP TABLE |                   |                                  |
+|------------+-------------------+----------------------------------|
+| SELECT 129 |                   |                                  |
+|  pdx_month | unemployment_rate |       unemployment_rate_12mo_lag |
+| 2020-09-01 |               7.7 |                              3.1 |
+| 2020-08-01 |               9.1 |                              3.7 |
+| 2020-07-01 |              11.2 |                              3.8 |
+| 2020-06-01 |              11.8 |                              3.8 |
+| 2020-05-01 |                14 |                              3.4 |
+| 2020-04-01 |              14.2 |                              3.6 |
+| 2020-03-01 |               3.6 |                              4.1 |
+| 2020-02-01 |               3.5 |                              4.1 |
+| 2020-01-01 |               3.4 |                              4.2 |
+| 2019-12-01 |               2.8 |                              3.7 |
+| 2019-11-01 |               2.9 |                              3.6 |
+| 2019-10-01 |                 3 |                              3.6 |
+| 2019-09-01 |               3.1 |                              3.5 |
+| DROP TABLE |                   |                                  |
+| SELECT 129 |                   |                                  |
+|  pdx_month | unemployment_rate | unemployment_rate_yoy_pct_change |
+| 2020-09-01 |               7.7 |                           148.39 |
+| 2020-08-01 |               9.1 |                           145.95 |
+| 2020-07-01 |              11.2 |                           194.74 |
+| 2020-06-01 |              11.8 |                           210.53 |
+| 2020-05-01 |                14 |                           311.76 |
+| 2020-04-01 |              14.2 |                           294.44 |
+| 2020-03-01 |               3.6 |                            -12.2 |
+| 2020-02-01 |               3.5 |                           -14.63 |
+| 2020-01-01 |               3.4 |                           -19.05 |
+| 2019-12-01 |               2.8 |                           -24.32 |
+| 2019-11-01 |               2.9 |                           -19.44 |
+| 2019-10-01 |                 3 |                           -16.67 |
+| 2019-09-01 |               3.1 |                           -11.43 |
+
