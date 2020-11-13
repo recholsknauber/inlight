@@ -1,0 +1,24 @@
+;; shadow-cljs configuration
+{:source-paths
+ ["src/dev"
+  "src/main"
+  "src/test"]
+
+ :dependencies [[incanter "1.9.3"]
+                [metasoarous/oz "1.6.0-alpha31"]
+                [clj-http "3.10.3"]
+                [org.clojure/data.json "1.0.0"]
+                ;;Database Stuff
+                [com.h2database/h2 "1.4.200"]
+                [seancorfield/next.jdbc "1.1.610"]
+                [org.xerial/sqlite-jdbc "3.7.2"]
+                [sqlingvo "0.9.31"]
+                [cider/cider-nrepl "0.25.4"]]
+ :dev-http {8080 "public"}
+ :builds
+ {:frontend
+  {:output-dir "resources/public/js"
+   :asset-path "."
+   :target :browser
+   :modules {:main {:init-fn inlight.frontend.app/init}}
+   }}}
