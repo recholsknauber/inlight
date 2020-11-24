@@ -15,9 +15,7 @@
   (def db-cred {:dbtype "postgresql"
                 :dbname "econ"
                 :host "127.0.0.1"
-                :post "5432"
-                :user "postgres"
-                :password "ela8teD53"})
+                :post "5432"})
 
   (def db (jdbc/get-datasource db-cred))
 
@@ -25,7 +23,7 @@
 #+end_src
 
 #+RESULTS:
-: nil#'inlight.core/db-cred#'inlight.core/db#'inlight.core/dbsql
+: #'cljs.user/db-cred
 * Table creation--PDX Employment Wage & Salary Data
 #+begin_src clojure :session PDX_ECON
   ;; REPL -- Import table of Portland Employment Wage & Salary Data
@@ -74,7 +72,7 @@
 #+end_src
 
 #+RESULTS:
-: #'inlight.core/table-pdx-earn#'inlight.core/table-pdx-earn-maps#'inlight.core/date-to-string#'inlight.core/table-pdx-earn-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-earnings-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-earnings-portland[#:next.jdbc{:update-count 129}]
+: #'cljs.user/table-pdx-earn-maps-strdate
 * Table creation--PDX Unemployment
 #+begin_src clojure :session PDX_ECON
   ;; REPL -- Import table of Portland Employment
@@ -116,7 +114,7 @@
 #+end_src
 
 #+RESULTS:
-: #'inlight.core/table-pdx-emp#'inlight.core/table-pdx-emp-maps#'inlight.core/table-pdx-emp-maps-strdate[#:next.jdbc{:update-count 0}]#'inlight.core/create-table-employment-portland[#:next.jdbc{:update-count 0}]#'inlight.core/insert-table-employment-portland[#:next.jdbc{:update-count 129}]
+: #'cljs.user/table-pdx-emp-maps-strdate
 * SQL--join Earnings and Employment
 #+begin_src sql :engine "postgresql" :database econ :dbuser postgres :dbpassword postgres :session pdx_econ
   DROP TABLE IF EXISTS pdx_econ.earnings_employment_join;
