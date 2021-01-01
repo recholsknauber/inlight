@@ -1,1 +1,0 @@
-{"version":3,"sources":["inlight/frontend/app.cljs"],"mappings":";AAEA,AAAA,AAAMA;AAAN,AACE,AAAA,AAACC","names":["inlight.frontend.app/init","cljs.core.println"],"sourcesContent":["(ns inlight.frontend.app)\r\n\r\n(defn init []\r\n  (println \"Howdy World!\"))\r\n"]}
