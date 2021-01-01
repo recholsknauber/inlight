@@ -1,4 +1,7 @@
 /resources/private
 /.shadow-cljs
-.nrepl-port
+/node_modules
 /target
+package-lock.json
+package.json
+.nrepl-port
